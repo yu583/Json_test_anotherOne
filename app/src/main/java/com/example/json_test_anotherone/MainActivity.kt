@@ -9,6 +9,8 @@ import android.widget.TextView
 import androidx.annotation.UiThread
 import androidx.annotation.WorkerThread
 import androidx.core.os.HandlerCompat
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -54,10 +56,11 @@ class MainActivity : AppCompatActivity() {
             val bodyData = sendDataJson.toByteArray()
 
             //http接続
+            var statusCode =0
             var result =""
+            //POST通信(通話部屋の作成)
             val url = URL("http://192.168.0.3:8080/api/room")
             val con = url.openConnection() as? HttpURLConnection
-            //POST通信
             con?.let{
                 it.connectTimeout = 1000
                 it.readTimeout = 1000
@@ -71,28 +74,55 @@ class MainActivity : AppCompatActivity() {
                 outputStream.write(bodyData)
                 outputStream.flush()
                 outputStream.close()
-                //Responseの取り出し
-                val stream = it.inputStream
-                result = changestring(stream)
+                //ステータス取り出し
+                statusCode = it.responseCode
                 //終了
                 it.disconnect()
             }
-            //GET通信
+
+            //GET通信(参加可能な部屋の取得)
+            if(statusCode==200) {
+                val url2 = URL("http://192.168.0.3:8080/api/room")
+                val con2 = url2.openConnection() as? HttpURLConnection
+                con2?.let {
+                    it.connectTimeout = 1000
+                    it.readTimeout = 1000
+                    it.requestMethod = "GET"
+                    it.connect()
+
+                    //Responseの取り出し
+                    val stream = it.inputStream
+                    result = changestring(stream)
+                    stream.close()
+                    //終了
+                    it.disconnect()
+                }
+            }
 
             //UIに移行
-            val analysis = Analysis(result)
+            val analysis = Analysis(result,statusCode)
             _handler.post(analysis)
         }
     }
 
     //2.非同期処理後の処理
-    private inner class Analysis(result: String): Runnable{
+    private inner class Analysis(result: String,statusCode: Int): Runnable{
         private val _result =result
+        private val _statusCode =statusCode
         @UiThread
         override fun run(){
             //書き込み
             val res = findViewById<TextView>(R.id.res)
-            res.text = "test"
+            if(_statusCode==200) {
+                val rootjson = JSONArray(_result)
+                val root0 = rootjson.getJSONObject(0)
+                val name = root0.getString("name")
+                res.text= name
+
+            }else{
+                res.text = "接続に失敗しました"
+                res.text = _statusCode.toString()
+            }
 
         }
     }
@@ -109,6 +139,7 @@ class MainActivity : AppCompatActivity() {
         reader.close()
         return sb.toString()
     }
+
     //部屋の作成
     private fun roommake():org.json.JSONObject{
         var mjson = org.json.JSONObject()
