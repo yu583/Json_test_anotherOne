@@ -49,13 +49,15 @@ class MainActivity : AppCompatActivity() {
         @WorkerThread
         override fun run(){
             //Json作成
-            val sendDataJson = "{\"id\":\"1234567890\",\"name\":\"hogehoge\"}"
+            var json = roommake()
+            val sendDataJson = json.toString()
             val bodyData = sendDataJson.toByteArray()
 
             //http接続
             var result =""
-            val url = URL("http://httpbin.org/post")
+            val url = URL("http://192.168.0.3:8080/api/room")
             val con = url.openConnection() as? HttpURLConnection
+            //POST通信
             con?.let{
                 it.connectTimeout = 1000
                 it.readTimeout = 1000
@@ -71,10 +73,11 @@ class MainActivity : AppCompatActivity() {
                 outputStream.close()
                 //Responseの取り出し
                 val stream = it.inputStream
-                result = ChangeString(stream)
+                result = changestring(stream)
                 //終了
                 it.disconnect()
             }
+            //GET通信
 
             //UIに移行
             val analysis = Analysis(result)
@@ -89,13 +92,13 @@ class MainActivity : AppCompatActivity() {
         override fun run(){
             //書き込み
             val res = findViewById<TextView>(R.id.res)
-            res.text = _result
+            res.text = "test"
 
         }
     }
 
     //InputStreamオブジェクトをStringに変換
-    private fun ChangeString(stream: InputStream): String{
+    private fun changestring(stream: InputStream): String{
         val sb = StringBuilder()
         val reader = BufferedReader(InputStreamReader(stream,"UTF-8"))
         var line = reader.readLine()
@@ -106,7 +109,23 @@ class MainActivity : AppCompatActivity() {
         reader.close()
         return sb.toString()
     }
+    //部屋の作成
+    private fun roommake():org.json.JSONObject{
+        var mjson = org.json.JSONObject()
+        mjson.put("name","kari")
+        mjson.put("is_personal",true)
 
-    
+        var tjson = org.json.JSONArray()
+        tjson.put("test")
+        mjson.put("tags",tjson)
+        return mjson
+    }
 
+    //タグの作成
+    private fun tagmake():org.json.JSONObject{
+        var json = org.json.JSONObject()
+        json.put("id",810)
+        json.put("name","kari")
+        return json
+    }
 }
